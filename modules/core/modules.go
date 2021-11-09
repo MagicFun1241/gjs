@@ -2,8 +2,8 @@ package core
 
 import (
 	"fmt"
-	"github.com/robertkrimen/otto"
-	coreFs "gjs/modules/fs"
+	"github.com/dop251/goja"
+	coreFilesystem "gjs/modules/fs"
 	corePath "gjs/modules/path"
 	"io/ioutil"
 	"os"
@@ -14,6 +14,10 @@ import (
 const ModuleLocationNative = 1
 const ModuleLocationPackage = 2
 const ModuleLocationRelative = 3
+
+type Module struct {
+	Runtime *goja.Runtime
+}
 
 func moduleExists(name string) (exist, native bool, moduleLocation uint8) {
 	switch name {
@@ -40,57 +44,58 @@ func moduleExists(name string) (exist, native bool, moduleLocation uint8) {
 	}
 }
 
-func importModule(vm *otto.Otto, file string) otto.Value {
+func (m *Module) importModule(file string) goja.Value {
 	content, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(fmt.Sprintf("error reading file %s", file))
-		return otto.UndefinedValue()
+		return goja.Undefined()
 	}
 
-	script, err := vm.Compile("", string(content))
+	script, err := goja.Compile("", string(content), false)
 	if err != nil {
 		panic(err.Error())
-		return otto.UndefinedValue()
+		return goja.Undefined()
 	}
 
-	v, err := vm.Run(script)
+	v, err := m.Runtime.RunProgram(script)
 	if err != nil {
 		panic(err.Error())
-		return otto.UndefinedValue()
+		return goja.Undefined()
 	}
 
 	return v
 }
 
-func Require(call otto.FunctionCall) otto.Value {
-	if !call.Argument(0).IsString() {
+func (m *Module) Require(call goja.FunctionCall) goja.Value {
+	moduleValue := call.Argument(0)
+	if moduleValue.ExportType().Name() != "string" {
 		panic("module must be a string")
-		return otto.UndefinedValue()
+		return goja.Undefined()
 	}
 
-	moduleName, _ := call.Argument(0).ToString()
+	moduleName := moduleValue.String()
 
 	exist, native, location := moduleExists(moduleName)
 	if !exist {
 		panic("module is not exists")
-		return otto.UndefinedValue()
+		return goja.Undefined()
 	}
 
-	var o otto.Value
+	var o *goja.Object
 
 	if native {
 		switch moduleName {
 		case "fs":
-			o = coreFs.CreateModule(call.Otto)
+			o = coreFilesystem.CreateModule(m.Runtime)
 		case "path":
-			o = corePath.CreateModule(call.Otto)
+			o = corePath.CreateModule(m.Runtime)
 		}
 	} else {
 		switch location {
 		case ModuleLocationPackage:
-			return importModule(call.Otto, moduleName)
+			return m.importModule(moduleName)
 		case ModuleLocationRelative:
-			return importModule(call.Otto, moduleName)
+			return m.importModule(moduleName)
 		}
 	}
 

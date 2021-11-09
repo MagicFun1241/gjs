@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/robertkrimen/otto"
+	"github.com/dop251/goja"
 	"time"
 )
 
@@ -9,14 +9,14 @@ type _timer struct {
 	timer    *time.Timer
 	duration time.Duration
 	interval bool
-	call     otto.FunctionCall
+	call     goja.FunctionCall
 }
 
 var registry = map[*_timer]*_timer{}
 var ready = make(chan *_timer)
 
-func newTimer(call otto.FunctionCall, interval bool) (*_timer, otto.Value) {
-	delay, _ := call.Argument(1).ToInteger()
+func (m *Module) newTimer(call goja.FunctionCall, interval bool) (*_timer, goja.Value) {
+	delay := call.Argument(1).ToInteger()
 	if 0 >= delay {
 		delay = 1
 	}
@@ -32,29 +32,26 @@ func newTimer(call otto.FunctionCall, interval bool) (*_timer, otto.Value) {
 		ready <- timer
 	})
 
-	value, err := call.Otto.ToValue(timer)
-	if err != nil {
-		panic(err)
-	}
-
+	value := m.Runtime.ToValue(timer)
 	return timer, value
 }
 
-func SetTimeout(call otto.FunctionCall) otto.Value {
-	_, value := newTimer(call, false)
+func (m *Module) SetTimeout(call goja.FunctionCall) goja.Value {
+	_, value := m.newTimer(call, false)
 	return value
 }
 
-func SetInterval(call otto.FunctionCall) otto.Value {
-	_, value := newTimer(call, true)
+func (m *Module) SetInterval(call goja.FunctionCall) goja.Value {
+	_, value := m.newTimer(call, true)
 	return value
 }
 
-func ClearTimeout(call otto.FunctionCall) otto.Value {
-	timer, _ := call.Argument(0).Export()
+func (m *Module) ClearTimeout(call goja.FunctionCall) goja.Value {
+	timer := call.Argument(0).Export()
 	if timer, ok := timer.(*_timer); ok {
 		timer.timer.Stop()
 		delete(registry, timer)
 	}
-	return otto.UndefinedValue()
+
+	return goja.Undefined()
 }

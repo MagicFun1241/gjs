@@ -2,9 +2,14 @@ package fs
 
 import (
 	"encoding/base64"
-	"github.com/robertkrimen/otto"
+	"github.com/dop251/goja"
 	"io/ioutil"
+	"reflect"
 )
+
+type Module struct {
+	runtime *goja.Runtime
+}
 
 func validateEncoding(name string) bool {
 	switch name {
@@ -15,52 +20,49 @@ func validateEncoding(name string) bool {
 	return false
 }
 
-func ReadFileSync(call otto.FunctionCall) otto.Value {
+func (fs *Module) readFileSync(call goja.FunctionCall) goja.Value {
 	path := call.Argument(0)
-	if !path.IsString() {
-		panic("path must be a string")
-		return otto.UndefinedValue()
+	if path.ExportType().Kind() != reflect.String {
+		panic(fs.runtime.NewTypeError("path must be a string"))
+		return goja.Undefined()
 	}
 
 	options := call.Argument(1)
 	var encoding = "utf8"
-	if !options.IsUndefined() {
-		if !options.IsObject() {
-			panic("options must be an object")
-			return otto.UndefinedValue()
-		}
+	if !goja.IsUndefined(options) {
+		if optionsObject, ok := options.(*goja.Object); ok {
+			encodingValue := optionsObject.Get("encoding")
+			if encodingValue.ExportType().Kind() != reflect.String {
+				panic(fs.runtime.NewTypeError("invalid encoding value"))
+				return goja.Undefined()
+			}
 
-		oo := options.Object()
-		encodingValue, _ := oo.Get("encoding")
+			encoding = encodingValue.String()
 
-		if !encodingValue.IsString() {
-			panic("invalid encoding value")
-			return otto.UndefinedValue()
-		}
-
-		t, _ := encodingValue.ToString()
-		encoding = t
-
-		if !validateEncoding(encoding) {
-			panic("invalid encoding value")
-			return otto.UndefinedValue()
+			if !validateEncoding(encoding) {
+				panic(fs.runtime.NewTypeError("invalid encoding value"))
+				return goja.Undefined()
+			}
+		} else {
+			panic(fs.runtime.NewTypeError("options must be an object"))
+			return goja.Undefined()
 		}
 	}
 
-	pathString, _ := path.ToString()
+	pathString := path.String()
 	data, err := ioutil.ReadFile(pathString)
 	if err != nil {
-		panic("error reading file")
-		return otto.UndefinedValue()
+		panic(fs.runtime.NewTypeError("error reading file"))
+		return goja.Undefined()
 	}
 
-	var ret otto.Value
+	var ret goja.Value
 
 	switch encoding {
 	case "utf8", "utf-8":
-		ret, _ = otto.ToValue(string(data))
+		ret = fs.runtime.ToValue(string(data))
 	case "base64":
-		ret, _ = otto.ToValue(base64.StdEncoding.EncodeToString(data))
+		ret = fs.runtime.ToValue(base64.StdEncoding.EncodeToString(data))
 	}
 
 	return ret

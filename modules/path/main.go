@@ -1,20 +1,21 @@
 package path
 
-import "github.com/robertkrimen/otto"
+import (
+	"github.com/dop251/goja"
+)
 
-func join(_ otto.FunctionCall) otto.Value {
-	return otto.UndefinedValue()
+type Module struct {
+	runtime *goja.Runtime
 }
 
-func CreateModule(vm *otto.Otto) otto.Value {
-	object, err := vm.Object("new Object")
-	if err != nil {
-		panic("cant create object")
-		return otto.UndefinedValue()
-	}
+func (p *Module) join(_ goja.FunctionCall) goja.Value {
+	return goja.Undefined()
+}
 
-	_ = object.Set("join", join)
+func CreateModule(vm *goja.Runtime) *goja.Object {
+	path := &Module{runtime: vm}
 
-	ret, _ := otto.ToValue(object)
-	return ret
+	object := vm.NewObject()
+	_ = object.Set("join", path.join)
+	return object
 }

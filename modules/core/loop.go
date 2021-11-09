@@ -1,14 +1,16 @@
 package core
 
-import "github.com/robertkrimen/otto"
+import (
+	"github.com/dop251/goja"
+)
 
-func Loop(vm *otto.Otto) {
+func Loop(vm *goja.Runtime) {
 	for {
 		select {
 		case timer := <-ready:
 			var arguments []interface{}
-			if len(timer.call.ArgumentList) > 2 {
-				tmp := timer.call.ArgumentList[2:]
+			if len(timer.call.Arguments) > 2 {
+				tmp := timer.call.Arguments[2:]
 				arguments = make([]interface{}, 2+len(tmp))
 				for i, value := range tmp {
 					arguments[i+2] = value
@@ -17,15 +19,16 @@ func Loop(vm *otto.Otto) {
 				arguments = make([]interface{}, 1)
 			}
 
-			arguments[0] = timer.call.ArgumentList[0]
-			_, err := vm.Call(`Function.call.call`, nil, arguments...)
+			arguments[0] = timer.call.Arguments[0]
 
-			if err != nil {
-				for _, timer := range registry {
-					timer.timer.Stop()
-					delete(registry, timer)
-					return
-				}
+			var fn func(...interface{}) string
+			_ = vm.ExportTo(vm.Get("Function.call.call"), &fn)
+			fn(arguments...)
+
+			for _, timer := range registry {
+				timer.timer.Stop()
+				delete(registry, timer)
+				return
 			}
 
 			if timer.interval {

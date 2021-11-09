@@ -3,36 +3,33 @@ package main
 import (
 	_ "embed"
 	"fmt"
-	"github.com/robertkrimen/otto"
+	"github.com/dop251/goja"
 	"gjs/modules/core"
+	"gjs/modules/core/globals"
 )
 
 //go:embed example/index.js
 var entry string
 
 func main() {
-	defer func() {
-		if caught := recover(); caught != nil {
-			fmt.Print("Fatal error: ", caught)
-			return
-		}
-	}()
+	vm := goja.New()
+	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 
-	vm := otto.New()
-	vm.Interrupt = make(chan func(), 1)
+	m := &core.Module{Runtime: vm}
 
-	_ = vm.Set("setTimeout", core.SetTimeout)
-	_ = vm.Set("setInterval", core.SetInterval)
-	_ = vm.Set("clearTimeout", core.ClearTimeout)
-	_ = vm.Set("clearInterval", core.ClearTimeout)
+	_ = vm.Set("setTimeout", m.SetTimeout)
+	_ = vm.Set("setInterval", m.SetInterval)
+	_ = vm.Set("clearTimeout", m.ClearTimeout)
+	_ = vm.Set("clearInterval", m.ClearTimeout)
 
-	_ = vm.Set("require", core.Require)
+	_ = vm.Set("require", m.Require)
 
-	core.RegisterBuffer(vm)
+	globals.RegisterConsole(vm)
+	globals.RegisterBuffer(vm)
 
-	_, err := vm.Run(entry)
+	_, err := vm.RunString(entry)
 	if err != nil {
-		fmt.Print("Runtime error: ", err)
+		fmt.Print(err)
 		return
 	}
 
