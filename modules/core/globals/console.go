@@ -18,6 +18,12 @@ func formatValue(v goja.Value, propName *string) string {
 		return v.String()
 	case reflect.Int64:
 		return strconv.Itoa(int(v.ToInteger()))
+	case reflect.Bool:
+		if v.ToBoolean() {
+			return "true"
+		} else {
+			return "false"
+		}
 	default:
 		if _, ok := goja.AssertFunction(v); ok {
 			return fmt.Sprintf("[Function %s]", *propName)

@@ -2,14 +2,22 @@ package fs
 
 import (
 	"encoding/base64"
+	"errors"
 	"github.com/dop251/goja"
+	"gjs/modules/core/converters"
+	ioFilesystem "io/fs"
 	"io/ioutil"
+	"os"
 	"reflect"
 )
 
 type Module struct {
 	runtime *goja.Runtime
 }
+
+var (
+	writeFileError = errors.New("write error")
+)
 
 func validateEncoding(name string) bool {
 	switch name {
@@ -66,4 +74,72 @@ func (fs *Module) readFileSync(call goja.FunctionCall) goja.Value {
 	}
 
 	return ret
+}
+
+func (fs *Module) writeFileSync(call goja.FunctionCall) goja.Value {
+	fileValue := call.Argument(0)
+	dataValue := call.Argument(1)
+	optionsValue := call.Argument(2)
+
+	var encoding = "utf8"
+	var mode ioFilesystem.FileMode = 0666
+
+	if !goja.IsUndefined(optionsValue) {
+		if options, ok := optionsValue.(*goja.Object); ok {
+			encodingValue := options.Get("encoding")
+
+			if encodingValue.ExportType().Kind() != reflect.String {
+				panic(fs.runtime.NewTypeError("invalid encoding passed"))
+				return goja.Undefined()
+			}
+
+			encoding = encodingValue.String()
+			if !validateEncoding(encoding) {
+				panic(fs.runtime.NewTypeError("invalid encoding value"))
+				return goja.Undefined()
+			}
+		}
+	}
+
+	switch fileValue.ExportType().Kind() {
+	case reflect.String:
+		file := fileValue.String()
+
+		var d []byte
+
+		if dataArray, ok := dataValue.(goja.DynamicArray); ok {
+			d = converters.DynamicArrayToBytes(dataArray)
+		} else {
+			switch dataValue.ExportType().Kind() {
+			case reflect.String:
+				d = []byte(dataValue.String())
+			}
+		}
+
+		switch encoding {
+		case "base64":
+			d = []byte(base64.StdEncoding.EncodeToString(d))
+		}
+
+		err := ioutil.WriteFile(file, d, mode)
+		if err != nil {
+			panic(fs.runtime.NewGoError(writeFileError))
+		}
+	}
+
+	return goja.Undefined()
+}
+
+func (fs *Module) existsSync(call goja.FunctionCall) goja.Value {
+	pathValue := call.Argument(0)
+
+	if pathValue.ExportType().Kind() != reflect.String {
+		panic(fs.runtime.NewTypeError("path must be a string"))
+		return goja.Undefined()
+	}
+
+	path := pathValue.String()
+	_, err := os.Stat(path)
+
+	return fs.runtime.ToValue(err == nil)
 }

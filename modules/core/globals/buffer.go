@@ -26,12 +26,18 @@ func (b *BufferModule) bufferFrom(call goja.FunctionCall) goja.Value {
 func (b *BufferModule) isBuffer(call goja.FunctionCall) goja.Value {
 	d := call.Argument(0)
 
-	if d.ExportType().Kind() != reflect.Array {
+	if arr, ok := d.(goja.DynamicArray); ok {
+		for i := 0; i <= arr.Len(); i++ {
+			arrItem := arr.Get(i)
+			if arrItem.ExportType().Kind() != reflect.Int64 {
+				return b.runtime.ToValue(false)
+			}
+		}
+
+		return b.runtime.ToValue(true)
+	} else {
 		return b.runtime.ToValue(false)
 	}
-
-	// TODO: Проверять, является ли каждый элемент массива числом
-	return b.runtime.ToValue(true)
 }
 
 func RegisterBuffer(vm *goja.Runtime) {

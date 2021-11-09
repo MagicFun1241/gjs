@@ -4,26 +4,29 @@ import (
 	"github.com/dop251/goja"
 )
 
-func Loop(vm *goja.Runtime) {
+func Loop() {
 	for {
 		select {
 		case timer := <-ready:
-			var arguments []interface{}
+			var arguments []goja.Value
 			if len(timer.call.Arguments) > 2 {
 				tmp := timer.call.Arguments[2:]
-				arguments = make([]interface{}, 2+len(tmp))
+				arguments = make([]goja.Value, 2+len(tmp))
 				for i, value := range tmp {
 					arguments[i+2] = value
 				}
 			} else {
-				arguments = make([]interface{}, 1)
+				arguments = make([]goja.Value, 1)
 			}
 
 			arguments[0] = timer.call.Arguments[0]
 
-			var fn func(...interface{}) string
-			_ = vm.ExportTo(vm.Get("Function.call.call"), &fn)
-			fn(arguments...)
+			if fn, ok := goja.AssertFunction(arguments[0]); ok {
+				_, err := fn(nil, arguments...)
+				if err != nil {
+					return
+				}
+			}
 
 			for _, timer := range registry {
 				timer.timer.Stop()

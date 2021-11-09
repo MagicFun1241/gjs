@@ -69,7 +69,7 @@ func (m *Module) importModule(file string) goja.Value {
 func (m *Module) Require(call goja.FunctionCall) goja.Value {
 	moduleValue := call.Argument(0)
 	if moduleValue.ExportType().Name() != "string" {
-		panic("module must be a string")
+		panic(m.Runtime.NewTypeError("module must be a string"))
 		return goja.Undefined()
 	}
 
@@ -77,7 +77,7 @@ func (m *Module) Require(call goja.FunctionCall) goja.Value {
 
 	exist, native, location := moduleExists(moduleName)
 	if !exist {
-		panic("module is not exists")
+		m.Runtime.Interrupt(fmt.Sprintf("module '%s' is not exists", moduleName))
 		return goja.Undefined()
 	}
 

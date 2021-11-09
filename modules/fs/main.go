@@ -9,5 +9,7 @@ func CreateModule(vm *goja.Runtime) *goja.Object {
 
 	object := vm.NewObject()
 	_ = object.Set("readFileSync", fs.readFileSync)
+	_ = object.Set("writeFileSync", fs.writeFileSync)
+	_ = object.Set("existsSync", fs.existsSync)
 	return object
 }
