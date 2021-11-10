@@ -14,8 +14,10 @@ type Module struct {
 
 type URL struct {
 	Host     string
-	Port     int
+	Port     uint16
+	Href     string
 	Protocol string
+	Pathname string
 }
 
 func (u *Module) parse(call goja.FunctionCall) goja.Value {
@@ -37,9 +39,12 @@ func (u *Module) parse(call goja.FunctionCall) goja.Value {
 	}
 
 	return converters.InterfaceToObject(u.runtime, URL{
-		Host:     nativeUrl.Host,
-		Port:     port,
+		Host: nativeUrl.Host,
+		Port: uint16(port),
+		// TODO: Имплементировать нормальное поведение
+		Href:     urlStr,
 		Protocol: nativeUrl.Scheme,
+		Pathname: nativeUrl.Path,
 	})
 }
 
