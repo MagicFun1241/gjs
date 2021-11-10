@@ -62,7 +62,7 @@ func logRaw(call goja.FunctionCall, file *os.File) goja.Value {
 		}
 	}
 
-	_, _ = file.WriteString(r)
+	_, _ = file.WriteString(r + "\n")
 
 	return goja.Undefined()
 }

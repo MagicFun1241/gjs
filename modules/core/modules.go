@@ -21,7 +21,7 @@ type Module struct {
 
 func moduleExists(name string) (exist, native bool, moduleLocation uint8) {
 	switch name {
-	case "fs", "path":
+	case "fs", "url", "http", "https", "path":
 		return true, true, ModuleLocationNative
 	}
 

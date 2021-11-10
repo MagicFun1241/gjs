@@ -39,13 +39,15 @@ func main() {
 	globals.RegisterProcess(vm)
 
 	_, err := vm.RunString(entry)
-	if jse, ok := err.(*goja.Exception); ok {
-		var e = jse.Value().Export()
-		if e != nil {
-			_, _ = os.Stderr.WriteString(e.(string))
+	if err != nil {
+		if jse, ok := err.(*goja.Exception); ok {
+			var e = jse.Value().Export()
+			if e != nil {
+				_, _ = os.Stderr.WriteString(e.(string))
+			}
+		} else {
+			_, _ = os.Stderr.WriteString(fmt.Sprintf("Error: %s", err.Error()))
 		}
-	} else {
-		_, _ = os.Stderr.WriteString(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
 	core.Loop()
