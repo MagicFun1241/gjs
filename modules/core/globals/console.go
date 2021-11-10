@@ -15,7 +15,7 @@ type ConsoleModule struct {
 func formatValue(v goja.Value, propName *string) string {
 	switch v.ExportType().Kind() {
 	case reflect.String:
-		return v.String()
+		return fmt.Sprintf("\"%s\"", v.String())
 	case reflect.Int64:
 		return strconv.Itoa(int(v.ToInteger()))
 	case reflect.Bool:

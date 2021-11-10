@@ -5,6 +5,7 @@ import (
 	"github.com/dop251/goja"
 	coreFilesystem "gjs/modules/fs"
 	corePath "gjs/modules/path"
+	coreUrl "gjs/modules/url"
 	"io/ioutil"
 	"os"
 	"path"
@@ -89,6 +90,8 @@ func (m *Module) Require(call goja.FunctionCall) goja.Value {
 			o = coreFilesystem.CreateModule(m.Runtime)
 		case "path":
 			o = corePath.CreateModule(m.Runtime)
+		case "url":
+			o = coreUrl.CreateModule(m.Runtime)
 		}
 	} else {
 		switch location {

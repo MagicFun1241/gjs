@@ -41,10 +41,7 @@ func main() {
 	_, err := vm.RunString(entry)
 	if err != nil {
 		if jse, ok := err.(*goja.Exception); ok {
-			var e = jse.Value().Export()
-			if e != nil {
-				_, _ = os.Stderr.WriteString(e.(string))
-			}
+			_, _ = os.Stderr.WriteString(jse.String())
 		} else {
 			_, _ = os.Stderr.WriteString(fmt.Sprintf("Error: %s", err.Error()))
 		}

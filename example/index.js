@@ -1,6 +1,3 @@
-// const url = require('url');
-const path = require('path');
+const url = require('url');
 
-console.log(path.join("path", "to", "dir"))
-console.log(path.dirname("path/to/dir"))
-console.log(path.extname("index.js"))
+console.log(url.parse('https://vk.com/im'))
