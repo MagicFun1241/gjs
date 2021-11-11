@@ -28,6 +28,14 @@ func InterfaceToObject(vm *goja.Runtime, v interface{}) *goja.Object {
 			_ = r.Set(fn, f.Int())
 		case reflect.String:
 			_ = r.Set(fn, f.String())
+		case reflect.Bool:
+			_ = r.Set(fn, f.Bool())
+		case reflect.Func:
+			if f.IsNil() {
+				break
+			}
+
+			_ = r.Set(fn, f.Interface())
 		}
 	}
 

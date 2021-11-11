@@ -1,3 +1,1 @@
-const url = require('url');
-
-console.log(url.parse('https://vk.com/im'))
+console.log(new URL('https://test.vk.com:80/im?token=test'))

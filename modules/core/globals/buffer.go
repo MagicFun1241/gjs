@@ -12,7 +12,7 @@ type BufferModule struct {
 func (b *BufferModule) bufferFrom(call goja.FunctionCall) goja.Value {
 	d := call.Argument(0)
 
-	if d.ExportType().Kind() != reflect.String {
+	if d.ExportType().Kind() == reflect.String {
 		s := d.String()
 		v := b.runtime.ToValue([]byte(s))
 		return v
@@ -43,9 +43,9 @@ func (b *BufferModule) isBuffer(call goja.FunctionCall) goja.Value {
 func RegisterBuffer(vm *goja.Runtime) {
 	b := &BufferModule{runtime: vm}
 
-	o := vm.NewObject()
-	_ = o.Set("from", b.bufferFrom)
-	_ = o.Set("isBuffer", b.isBuffer)
+	f := vm.ToValue(b.bufferFrom).(*goja.Object)
+	_ = f.Set("from", b.bufferFrom)
+	_ = f.Set("isBuffer", b.isBuffer)
 
-	_ = vm.Set("Buffer", o)
+	_ = vm.Set("Buffer", f)
 }

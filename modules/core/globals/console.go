@@ -28,18 +28,43 @@ func formatValue(v goja.Value, propName *string) string {
 		if _, ok := goja.AssertFunction(v); ok {
 			return fmt.Sprintf("[Function %s]", *propName)
 		} else if o, ok := v.(*goja.Object); ok {
-			t := "{ "
+			t := ""
 
-			for i, k := range o.Keys() {
-				prop := o.Get(k)
-				t += k + ": " + formatValue(prop, &k)
-
-				if i != len(o.Keys())-1 {
-					t += ", "
+			if o.ClassName() == "Array" {
+				if len(o.Keys()) == 0 {
+					t = "[]"
+					return t
 				}
+
+				t += "[ "
+				for i, k := range o.Keys() {
+					t += formatValue(o.Get(k), nil)
+
+					if i != len(o.Keys())-1 {
+						t += ", "
+					}
+				}
+				t += " ]"
+
+				return t
 			}
 
-			t += " }"
+			if len(o.Keys()) == 0 {
+				t = "{}"
+			} else {
+				t += "{ "
+
+				for i, k := range o.Keys() {
+					prop := o.Get(k)
+					t += k + ": " + formatValue(prop, &k)
+
+					if i != len(o.Keys())-1 {
+						t += ", "
+					}
+				}
+
+				t += " }"
+			}
 			return t
 		} else {
 			return "unknown"

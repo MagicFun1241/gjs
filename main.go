@@ -37,6 +37,7 @@ func main() {
 	globals.RegisterConsole(vm)
 	globals.RegisterBuffer(vm)
 	globals.RegisterProcess(vm)
+	globals.RegisterUrl(vm)
 
 	_, err := vm.RunString(entry)
 	if err != nil {
