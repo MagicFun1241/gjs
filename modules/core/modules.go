@@ -2,13 +2,14 @@ package core
 
 import (
 	"fmt"
+	gjsFs "github.com/MagicFun1241/gjs/modules/fs"
+	gjsPath "github.com/MagicFun1241/gjs/modules/path"
+	gjsUrl "github.com/MagicFun1241/gjs/modules/url"
 	"github.com/dop251/goja"
-	coreFilesystem "gjs/modules/fs"
-	corePath "gjs/modules/path"
-	coreUrl "gjs/modules/url"
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -20,13 +21,19 @@ type Module struct {
 	Runtime *goja.Runtime
 }
 
+var cachedModules = map[string]*goja.Object{}
+
+func isRelativePath(str string) bool {
+	return strings.HasPrefix(str, "./") || strings.HasPrefix(str, "../")
+}
+
 func moduleExists(name string) (exist, native bool, moduleLocation uint8) {
 	switch name {
 	case "fs", "url", "http", "https", "path":
 		return true, true, ModuleLocationNative
 	}
 
-	if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") {
+	if isRelativePath(name) {
 		return true, false, ModuleLocationRelative
 	} else {
 		modulePath := path.Join("node_modules", name)
@@ -45,20 +52,35 @@ func moduleExists(name string) (exist, native bool, moduleLocation uint8) {
 	}
 }
 
-func (m *Module) importModule(file string) goja.Value {
-	content, err := ioutil.ReadFile(file)
-	if err != nil {
-		panic(fmt.Sprintf("error reading file %s", file))
+func (m *Module) getCurrentModulePath() string {
+	var buf [2]goja.StackFrame
+	frames := m.Runtime.CaptureCallStack(2, buf[:0])
+	if len(frames) < 2 {
+		return "."
+	}
+	return path.Dir(frames[1].SrcName())
+}
+
+func (m *Module) importModule(originalPath, file string) goja.Value {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		m.Runtime.Interrupt(fmt.Sprintf("Cannot find module '%s'", originalPath))
 		return goja.Undefined()
 	}
 
-	script, err := goja.Compile("", string(content), false)
+	contentBytes, _ := ioutil.ReadFile(file)
+	to := string(contentBytes)
+	if filepath.Ext(file) == ".json" {
+		to = fmt.Sprintf("module.exports = %s", string(contentBytes))
+	}
+
+	script, err := goja.Compile("", to, false)
 	if err != nil {
 		panic(err.Error())
 		return goja.Undefined()
 	}
 
 	v, err := m.Runtime.RunProgram(script)
+
 	if err != nil {
 		panic(err.Error())
 		return goja.Undefined()
@@ -76,9 +98,9 @@ func (m *Module) Require(call goja.FunctionCall) goja.Value {
 
 	moduleName := moduleValue.String()
 
-	exist, native, location := moduleExists(moduleName)
+	exist, native, _ := moduleExists(moduleName)
 	if !exist {
-		m.Runtime.Interrupt(fmt.Sprintf("module '%s' is not exists", moduleName))
+		m.Runtime.Interrupt(fmt.Sprintf("Cannot find module '%s'", moduleName))
 		return goja.Undefined()
 	}
 
@@ -87,20 +109,36 @@ func (m *Module) Require(call goja.FunctionCall) goja.Value {
 	if native {
 		switch moduleName {
 		case "fs":
-			o = coreFilesystem.CreateModule(m.Runtime)
-		case "path":
-			o = corePath.CreateModule(m.Runtime)
+			o = gjsFs.CreateModule(m.Runtime)
 		case "url":
-			o = coreUrl.CreateModule(m.Runtime)
+			o = gjsUrl.CreateModule(m.Runtime)
+		case "path":
+			o = gjsPath.CreateModule(m.Runtime)
 		}
 	} else {
-		switch location {
-		case ModuleLocationPackage:
-			return m.importModule(moduleName)
-		case ModuleLocationRelative:
-			return m.importModule(moduleName)
+		if cachedModules[moduleName] != nil {
+			return cachedModules[moduleName]
 		}
+
+		if filepath.Ext(moduleName) == "" {
+			moduleName += ".js"
+		}
+
+		op := moduleName
+		moduleName = path.Clean(moduleName)
+
+		var start string
+		if path.IsAbs(op) {
+			start = "/"
+		} else {
+			start = m.getCurrentModulePath()
+		}
+
+		moduleName = path.Join(start, moduleName)
+		return m.importModule(op, moduleName)
 	}
+
+	cachedModules[moduleName] = o
 
 	return o
 }

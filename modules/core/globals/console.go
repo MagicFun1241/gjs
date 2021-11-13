@@ -12,10 +12,23 @@ type ConsoleModule struct {
 	runtime *goja.Runtime
 }
 
-func formatValue(v goja.Value, propName *string) string {
+type formatOptions struct {
+	PropName     *string
+	StringQuotes bool
+}
+
+func formatValue(v goja.Value, opts formatOptions) string {
+	if goja.IsNull(v) {
+		return "null"
+	}
+
 	switch v.ExportType().Kind() {
 	case reflect.String:
-		return fmt.Sprintf("\"%s\"", v.String())
+		if opts.StringQuotes {
+			return fmt.Sprintf("\"%s\"", v.String())
+		} else {
+			return v.String()
+		}
 	case reflect.Int64:
 		return strconv.Itoa(int(v.ToInteger()))
 	case reflect.Bool:
@@ -26,7 +39,7 @@ func formatValue(v goja.Value, propName *string) string {
 		}
 	default:
 		if _, ok := goja.AssertFunction(v); ok {
-			return fmt.Sprintf("[Function %s]", *propName)
+			return fmt.Sprintf("[Function %s]", *opts.PropName)
 		} else if o, ok := v.(*goja.Object); ok {
 			t := ""
 
@@ -38,7 +51,7 @@ func formatValue(v goja.Value, propName *string) string {
 
 				t += "[ "
 				for i, k := range o.Keys() {
-					t += formatValue(o.Get(k), nil)
+					t += formatValue(o.Get(k), formatOptions{})
 
 					if i != len(o.Keys())-1 {
 						t += ", "
@@ -56,7 +69,7 @@ func formatValue(v goja.Value, propName *string) string {
 
 				for i, k := range o.Keys() {
 					prop := o.Get(k)
-					t += k + ": " + formatValue(prop, &k)
+					t += k + ": " + formatValue(prop, formatOptions{PropName: &k, StringQuotes: true})
 
 					if i != len(o.Keys())-1 {
 						t += ", "
@@ -80,7 +93,7 @@ func logRaw(call goja.FunctionCall, file *os.File) goja.Value {
 	var r = ""
 
 	for i, arg := range call.Arguments {
-		r += formatValue(arg, nil)
+		r += formatValue(arg, formatOptions{StringQuotes: false})
 
 		if i != len(call.Arguments)-1 {
 			r += " "

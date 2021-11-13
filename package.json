@@ -1,0 +1,33 @@
+{
+  "name": "gjs",
+  "version": "1.0.0",
+  "description": "NodeJS alternative",
+  "main": "cli/index.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "build:engine": "run-p build:engine-module-*",
+    "build:engine-module-fs": "cd ./modules/fs && go build -buildmode=c-shared -o ../../build/libgjs-fs.dll",
+    "build:engine-module-path": "cd ./modules/path && go build -buildmode=c-shared -o ../../build/libgjs-path.dll",
+    "build:engine-module-url": "cd ./modules/url && go build -buildmode=c-shared -o ../../build/libgjs-url.dll"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MagicFun1241/gjs.git"
+  },
+  "keywords": [
+    "js",
+    "engine",
+    "node"
+  ],
+  "author": "magicfun1241",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MagicFun1241/gjs/issues"
+  },
+  "homepage": "https://github.com/MagicFun1241/gjs#readme",
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}

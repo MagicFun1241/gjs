@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/dop251/goja"
-	"gjs/modules/core/converters"
 	ioFilesystem "io/fs"
 	"io/ioutil"
 	"os"
@@ -26,6 +25,17 @@ func validateEncoding(name string) bool {
 	}
 
 	return false
+}
+
+func dynamicArrayToBytes(a goja.DynamicArray) []byte {
+	r := make([]byte, a.Len())
+
+	for i := 0; i <= a.Len(); i++ {
+		item := a.Get(i)
+		r[i] = byte(item.ToInteger())
+	}
+
+	return r
 }
 
 func (fs *Module) readFileSync(call goja.FunctionCall) goja.Value {
@@ -76,6 +86,55 @@ func (fs *Module) readFileSync(call goja.FunctionCall) goja.Value {
 	return ret
 }
 
+func (fs *Module) mkdirSync(call goja.FunctionCall) goja.Value {
+	p := call.Argument(0)
+	optionsValue := call.Argument(1)
+
+	var recursive = false
+	var mode ioFilesystem.FileMode = 0777
+
+	if !goja.IsUndefined(optionsValue) {
+		if options, ok := optionsValue.(*goja.Object); ok {
+			modeValue := options.Get("mode")
+			if !goja.IsUndefined(modeValue) {
+				if modeValue.ExportType().Kind() != reflect.Int64 {
+					panic(fs.runtime.NewTypeError("mode option must be a int"))
+					return goja.Undefined()
+				}
+
+				mode = ioFilesystem.FileMode(modeValue.ToInteger())
+			}
+
+			recursiveValue := options.Get("recursive")
+			if !goja.IsUndefined(recursiveValue) {
+				if recursiveValue.ExportType().Kind() != reflect.Bool {
+					panic(fs.runtime.NewTypeError("recursive option must be a bool"))
+					return goja.Undefined()
+				}
+
+				recursive = recursiveValue.ToBoolean()
+			}
+		} else {
+			panic(fs.runtime.NewTypeError("options must be a object"))
+			return goja.Undefined()
+		}
+	}
+
+	if p.ExportType().Kind() != reflect.String {
+		panic(fs.runtime.NewTypeError("dir path must be a string"))
+		return goja.Undefined()
+	}
+
+	if recursive {
+		_ = os.MkdirAll(p.String(), mode)
+		// TODO: Реализовать рекурсивное создание подпапок тк по стандарту необходимо возвращать путь к первой созданной
+		return goja.Undefined()
+	} else {
+		_ = os.Mkdir(p.String(), mode)
+		return goja.Undefined()
+	}
+}
+
 func (fs *Module) writeFileSync(call goja.FunctionCall) goja.Value {
 	fileValue := call.Argument(0)
 	dataValue := call.Argument(1)
@@ -108,7 +167,7 @@ func (fs *Module) writeFileSync(call goja.FunctionCall) goja.Value {
 		var d []byte
 
 		if dataArray, ok := dataValue.(goja.DynamicArray); ok {
-			d = converters.DynamicArrayToBytes(dataArray)
+			d = dynamicArrayToBytes(dataArray)
 		} else {
 			switch dataValue.ExportType().Kind() {
 			case reflect.String:
@@ -151,5 +210,6 @@ func CreateModule(vm *goja.Runtime) *goja.Object {
 	_ = object.Set("readFileSync", fs.readFileSync)
 	_ = object.Set("writeFileSync", fs.writeFileSync)
 	_ = object.Set("existsSync", fs.existsSync)
+	_ = object.Set("mkdirSync", fs.mkdirSync)
 	return object
 }

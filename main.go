@@ -3,9 +3,9 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"github.com/MagicFun1241/gjs/modules/core"
+	"github.com/MagicFun1241/gjs/modules/core/globals"
 	"github.com/dop251/goja"
-	"gjs/modules/core"
-	"gjs/modules/core/globals"
 	"os"
 )
 
@@ -13,15 +13,13 @@ import (
 var entry string
 
 func main() {
-	go func() {
-		if caught := recover(); caught != nil {
-			panic(caught)
-			return
+	vm := goja.New()
+
+	defer func() {
+		if err := recover(); err != nil {
+			_, _ = os.Stderr.WriteString(err.(string))
 		}
 	}()
-
-	vm := goja.New()
-	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 
 	m := &core.Module{Runtime: vm}
 
